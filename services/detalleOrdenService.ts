@@ -30,11 +30,17 @@ export const useDetalleOrdenService = () => {
         await $axiosService.delete(`/api/detalleordenes/delete-detalle/${id}`);
     };
 
+    const updateDetalleOrden = async (detalleOrden: DetalleOrden): Promise<DetalleOrden> => {
+        const response = await $axiosService.put(`/api/detalleordenes/`, detalleOrden);
+        return response.data;
+    }
+
     return {
         createDetalleOrden,
         getDetalleOrden,
         getDetallesByOrderId,
         gestionarDevolucion,
         deleteDetalleOrden,
+        updateDetalleOrden
     };
 }

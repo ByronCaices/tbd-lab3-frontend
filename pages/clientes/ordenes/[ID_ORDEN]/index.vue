@@ -44,7 +44,7 @@
                   <th>ID Producto</th>
                   <th>Producto</th>
                   <th>ID ORDEN</th>
-                  <th>BOTON</th>
+                  <th>EDITAR</th>
                 </tr>
               </thead>
               <tbody>
@@ -86,6 +86,27 @@
             <v-spacer></v-spacer>
             <v-btn color="red darken-1" text @click="dialogDevolver = false">Cancelar</v-btn>
             <v-btn color="green darken-1" text @click="realizarDevolucion(devolucion)">Guardar</v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
+
+      <v-dialog v-model="dialogEditar" max-width="500px">
+        <v-card variant="elevated" color="var(--surface-a40)">
+          <v-card-title>
+            <span class="headline">Editar Producto de la Orden</span>
+          </v-card-title>
+          <v-card-text>
+            <v-form ref="formEditar">
+              <v-text-field label="CANTIDAD" color="var(--primary-a0)"
+                            v-model="searchParams.cantidad"></v-text-field>
+              <v-text-field label="PRECIO UNITARIO" color="var(--primary-a0)"
+                            v-model="searchParams.precio_unitario"></v-text-field>
+            </v-form>
+          </v-card-text>
+          <v-card-actions>
+            <v-spacer></v-spacer>
+            <v-btn color="red darken-1" text @click="dialogEditar = false">Cancelar</v-btn>
+            <v-btn color="green darken-1" text @click="updateDetalleOrden()">Guardar</v-btn>
           </v-card-actions>
         </v-card>
       </v-dialog>
@@ -159,7 +180,7 @@ export default {
       accesToken: null,
       id_usuario: null,
       dialogDevolver: false,
-
+      dialogEditar: false,
     };
   },
   computed: {
@@ -218,6 +239,14 @@ export default {
       this.dialogDevolver = true;
       this.devolucion.idOrden = orden.id_orden;
     },
+    editarDetalle(detalle) {
+      this.dialogEditar = true;
+      this.searchParams.id_detalle = detalle.id_detalle;
+      this.searchParams.cantidad = detalle.cantidad;
+      this.searchParams.precio_unitario = detalle.precio_unitario;
+      this.searchParams.id_producto = detalle.id_producto;
+      this.searchParams.id_orden = detalle.id_orden;
+    },
     async realizarDevolucion(devolucion) {
       // utilizando el servicio de detalleOrdenService  y gestionarDevolucion
       // parsea a int
@@ -247,6 +276,16 @@ export default {
       const index = this.detallesOrden.findIndex((detalle) => detalle.id_detalle === devolucion.idOrden);
       if (index !== -1) {
         this.detallesOrden.splice(index, 1);
+      }
+    },
+    async updateDetalleOrden() {
+      try {
+        const detalleOrdenService = useDetalleOrdenService();
+        await detalleOrdenService.updateDetalleOrden(this.searchParams);
+        this.dialogEditar = false;
+        this.fetchDetallesOrden();
+      } catch (error) {
+        console.error("Error al actualizar el detalle de la orden:", error);
       }
     },
   },
