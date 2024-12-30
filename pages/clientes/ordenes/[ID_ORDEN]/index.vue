@@ -99,8 +99,6 @@
             <v-form ref="formEditar">
               <v-text-field label="CANTIDAD" color="var(--primary-a0)"
                             v-model="searchParams.cantidad"></v-text-field>
-              <v-text-field label="PRECIO UNITARIO" color="var(--primary-a0)"
-                            v-model="searchParams.precio_unitario"></v-text-field>
             </v-form>
           </v-card-text>
           <v-card-actions>
@@ -176,6 +174,7 @@ export default {
         id_orden: null,
         // producto
       },
+      cantidadAnterior: null,
       refreshToken: null,
       accesToken: null,
       id_usuario: null,
@@ -246,6 +245,7 @@ export default {
       this.searchParams.precio_unitario = detalle.precio_unitario;
       this.searchParams.id_producto = detalle.id_producto;
       this.searchParams.id_orden = detalle.id_orden;
+      this.cantidadAnterior = detalle.cantidad;
     },
     async realizarDevolucion(devolucion) {
       // utilizando el servicio de detalleOrdenService  y gestionarDevolucion
@@ -262,26 +262,51 @@ export default {
         console.error("Error al realizar la devolución:", error);
       }
       // elimina el detalle de la orden usando el metodo
-      try {
-        const detalleOrdenService = useDetalleOrdenService();
-        const detalle = this.detallesOrden.find((detalle) => detalle.id_producto === devolucion.idProducto);
-        await detalleOrdenService.deleteDetalleOrden(detalle.id_detalle);
-        this.fetchDetallesOrden();
-        this.orden.total -= detalle.precio_unitario * devolucion.cantidad;
 
-      } catch (error) {
-        console.error("Error al eliminar el detalle de la orden:", error);
+      // Si se devuelven todos los productos de un detalle, se elimina el detalle de la orden
+      const detalle = this.detallesOrden.find((detalle) => detalle.id_producto === devolucion.idProducto);
+      if (detalle.cantidad - devolucion.cantidad <= 0) {
+        try {
+          const detalleOrdenService = useDetalleOrdenService();
+          await detalleOrdenService.deleteDetalleOrden(detalle.id_detalle);
+          this.fetchDetallesOrden();
+
+        } catch (error) {
+          console.error("Error al eliminar el detalle de la orden:", error);
+        }
+        // elimina el detalle de detallesOrden
+        const index = this.detallesOrden.findIndex((detalle) => detalle.id_detalle === devolucion.idOrden);
+        if (index !== -1) {
+          this.detallesOrden.splice(index, 1);
+        }
       }
-      // elimina el detalle de detallesOrden
-      const index = this.detallesOrden.findIndex((detalle) => detalle.id_detalle === devolucion.idOrden);
-      if (index !== -1) {
-        this.detallesOrden.splice(index, 1);
-      }
+      this.orden.total -= detalle.precio_unitario * devolucion.cantidad;
     },
     async updateDetalleOrden() {
       try {
         const detalleOrdenService = useDetalleOrdenService();
+        const ordenService = useOrdenService();
+        const productoService = useProductoService();
+
+        if (this.searchParams.cantidad <= this.cantidadAnterior) {
+          console.error("Solo se puede agregar nuevos productos");
+          return;
+        }
+
+        // En primera instancia se verifica la cantidad de stock del producto
+        const producto = await productoService.getProductoById(this.searchParams.id_producto);
+        if (producto.stock - this.searchParams.cantidad < 0) {
+          console.error("No hay suficiente stock para comprar más productos");
+          return;
+        }
+        producto.stock = producto.stock - this.searchParams.cantidad;
+        this.orden.total = this.orden.total + this.searchParams.precio_unitario * this.searchParams.cantidad;
+
+        // Actualiza el detalle de la orden, la orden, y el producto con los nuevos valores
+        await ordenService.updateOrden(this.orden);
+        await productoService.updateProducto(producto);
         await detalleOrdenService.updateDetalleOrden(this.searchParams);
+
         this.dialogEditar = false;
         this.fetchDetallesOrden();
       } catch (error) {
