@@ -262,21 +262,26 @@ export default {
         console.error("Error al realizar la devolución:", error);
       }
       // elimina el detalle de la orden usando el metodo
-      try {
-        const detalleOrdenService = useDetalleOrdenService();
-        const detalle = this.detallesOrden.find((detalle) => detalle.id_producto === devolucion.idProducto);
-        await detalleOrdenService.deleteDetalleOrden(detalle.id_detalle);
-        this.fetchDetallesOrden();
-        this.orden.total -= detalle.precio_unitario * devolucion.cantidad;
 
-      } catch (error) {
-        console.error("Error al eliminar el detalle de la orden:", error);
+      // Si se devuelven todos los productos de un detalle, se elimina el detalle de la orden
+      const detalle = this.detallesOrden.find((detalle) => detalle.id_producto === devolucion.idProducto);
+      if (detalle.cantidad - devolucion.cantidad <= 0) {
+        try {
+          const detalleOrdenService = useDetalleOrdenService();
+          await detalleOrdenService.deleteDetalleOrden(detalle.id_detalle);
+          this.fetchDetallesOrden();
+          this.orden.total -= detalle.precio_unitario * devolucion.cantidad;
+
+        } catch (error) {
+          console.error("Error al eliminar el detalle de la orden:", error);
+        }
+        // elimina el detalle de detallesOrden
+        const index = this.detallesOrden.findIndex((detalle) => detalle.id_detalle === devolucion.idOrden);
+        if (index !== -1) {
+          this.detallesOrden.splice(index, 1);
+        }
       }
-      // elimina el detalle de detallesOrden
-      const index = this.detallesOrden.findIndex((detalle) => detalle.id_detalle === devolucion.idOrden);
-      if (index !== -1) {
-        this.detallesOrden.splice(index, 1);
-      }
+
     },
     async updateDetalleOrden() {
       try {
