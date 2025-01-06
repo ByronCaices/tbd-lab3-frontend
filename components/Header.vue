@@ -3,7 +3,7 @@
     <div class="header-left">
       <!-- Logo -->
       <div class="logo">
-        <img src="@/assets/logo.png" alt="Logo">
+        <img src="@/assets/logo.png" alt="Logo" />
       </div>
 
       <!-- Menú de navegación -->
@@ -12,39 +12,122 @@
           <li><a href="/productos">Productos</a></li>
           <li><a href="/clientes/ordenes">Ordenes</a></li>
           <li><a href="/clientes">Clientes</a></li>
+          <li><a href="/direcciones">Direcciones</a></li>
           <li><a href="/informes">Informes</a></li>
           <li><a href="/almacenes">Almacenes</a></li>
         </ul>
       </nav>
     </div>
 
-    
+    <!-- Bloque de ubicación a la derecha -->
+    <div class="header-right">
+      <!-- Ícono con Vuetify (o usa el icono MDI que prefieras) -->
+      <v-icon color="grey-lighten-3" class="location-icon">mdi-map-marker</v-icon>
+      <span class="address-text">{{ currentAddress }}</span>
+    </div>
   </header>
 </template>
 
 <script>
 
+import { useLocationService } from "~/services/locationService";
 
 export default {
   data() {
     return {
-      searchActive: false,
-      userMenuActive: false,
+      currentLat: null,
+      currentLng: null,
+      currentAddress: localStorage.getItem("userAddress"),
+      locationData: {},
     };
   },
+
+  mounted() {
+    // Al montar, verificamos si ya existe info en localStorage
+    this.initLocation();
+    //this.saveCurrentLocation();
+
+  },
+
   methods: {
-    toggleSearch() {
-      this.searchActive = !this.searchActive;
-      if (this.searchActive) {
-        this.$nextTick(() => {
-          this.$refs.searchInput.focus();
-        });
+    // 1. Verificar en localStorage antes de geolocalizar/fetchear
+    initLocation() {
+      const storedLat = localStorage.getItem("userLat");
+      const storedLng = localStorage.getItem("userLng");
+      const storedAddress = localStorage.getItem("userAddress");
+
+      if (storedLat && storedLng && storedAddress) {
+        // Si ya tenemos datos guardados, los asignamos directamente
+        this.currentLat = parseFloat(storedLat);
+        this.currentLng = parseFloat(storedLng);
+        this.currentAddress = storedAddress;
+      } else {
+        // Si no, los obtenemos desde el navegador
+        this.getBrowserLocation();
       }
     },
-    toggleUserMenu() {
-      this.userMenuActive = !this.userMenuActive;
-    }
-  }
+
+    // 2. Obtener coordenadas del navegador
+    getBrowserLocation() {
+      if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            this.currentLat = position.coords.latitude;
+            this.currentLng = position.coords.longitude;
+            // Hacer el reverse geocoding en Mapbox
+            this.fetchAddress();
+          },
+          (error) => {
+            console.error("Error al obtener la ubicación:", error);
+            this.currentAddress = "No se pudo obtener la ubicación";
+          }
+        );
+      } else {
+        this.currentAddress = "Geolocalización no soportada";
+      }
+    },
+
+    // 3. Reverse Geocoding a la API de Mapbox
+    async fetchAddress() {
+      const token =
+        "pk.eyJ1IjoiYmNhaWNlcyIsImEiOiJjbTVrZzY3ZnExZnU2MmlvbXpnYzI1ZDJxIn0.9y-y5WtWqSL-0j7STmXyKA";
+
+      try {
+        const response = await fetch(
+          `https://api.mapbox.com/geocoding/v5/mapbox.places/${this.currentLng},${this.currentLat}.json?access_token=${token}`
+        );
+        const data = await response.json();
+
+        if (data.features && data.features.length > 0) {
+          this.currentAddress = data.features[0].place_name;
+        } else {
+          this.currentAddress = "Dirección no encontrada";
+        }
+
+        // Guardamos en localStorage para no volver a fetchear
+        localStorage.setItem("userLat", this.currentLat.toString());
+        localStorage.setItem("userLng", this.currentLng.toString());
+        localStorage.setItem("userAddress", this.currentAddress);
+        this.saveCurrentLocation();
+      } catch (error) {
+        console.error("Error al obtener la dirección:", error);
+        this.currentAddress = "Error al obtener dirección";
+      }
+    },
+    async saveCurrentLocation() {
+      // Enviar al backend
+      const { saveLocation } = useLocationService();
+      const locationData = {
+        userId: 1,
+        latitude: parseFloat(localStorage.getItem("userLat")),
+        longitude: parseFloat(localStorage.getItem("userLng")),
+      };
+      // imprimi en formato json para ver si se guarda correctamente
+      console.log(JSON.stringify(locationData));
+      await saveLocation(locationData);
+
+    },
+  },
 };
 </script>
 
@@ -83,91 +166,27 @@ export default {
   color: #f0f0f0;
   font-weight: 600;
   transition: color 0.3s ease;
-  font-family: 'Roboto', sans-serif;
-  /* Asignar la fuente aquí */
+  font-family: "Roboto", sans-serif;
 }
 
 .menu ul li a:hover {
-  color:  var(--primary-a0);
-  font-family: 'Roboto', sans-serif;
+  color: var(--primary-a0);
 }
 
 .header-right {
   display: flex;
   align-items: center;
+  /* Ajusta la separación y alineación según tu preferencia */
 }
 
-.search-bar {
-  position: relative;
-  margin-right: 20px;
+.location-icon {
+  font-size: 20px;
+  margin-right: 8px;
 }
 
-.search-bar input {
-  padding: 8px 12px;
-  border-radius: 5px;
-  border: 1px solid #ccc;
-  transition: width 0.4s ease;
-}
-
-.search-input {
-  width: 200px;
-}
-
-.search-icon {
-  background: none;
-  border: none;
-  cursor: pointer;
-}
-
-.icon-size {
-  width: 20px;
-  height: 20px;
-  /* Ajuste del tamaño del icono de búsqueda */
-}
-
-.header-icons {
-  display: flex;
-  align-items: center;
-}
-
-.header-icons button {
-  background: none;
-  border: none;
-  margin-left: 10px;
-  cursor: pointer;
-}
-
-.btn-user img {
-  height: 24px;
-}
-
-.user-menu {
-  position: absolute;
-  top: 50px;
-  right: 10px;
-  background-color: white;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  padding: 10px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-
-.user-menu ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.user-menu ul li {
-  margin: 10px 0;
-}
-
-.user-menu ul li a {
-  text-decoration: none;
-  color: #333;
-}
-
-.user-menu ul li a:hover {
-  color: var(--primary-a0);
+.address-text {
+  color: #f0f0f0;
+  font-family: "Roboto", sans-serif;
+  font-size: 14px;
 }
 </style>

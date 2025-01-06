@@ -4,6 +4,4 @@ export interface Almacen{
     posicion: string;
     longitud: string;
     latitud: string;
-
-
 }

@@ -2,9 +2,9 @@
   <Header />
 
   <div class="background">
-    <h1 class="lexend-deca-title">CLIENTES</h1>
+    <h1 class="container-title lexend-deca-title">CLIENTES</h1>
 
-    <div class="boton-clientes">
+    <div class="container-title boton-clientes">
       <v-btn color="#e29818ff" size="small" variant="tonal" class="boton-chico" @click="irAAñadir">
         Añadir Cliente
       </v-btn>
@@ -27,13 +27,17 @@
             </v-card-text>
             <v-card-actions>
               <v-btn icon @click="toggleClientFocus(cliente)">
-                <v-icon>{{ isSelected(cliente) ? 'mdi-checkbox-marked-circle' : 'mdi-checkbox-blank-circle-outline' }}</v-icon>
+                <v-icon>{{ isSelected(cliente) ? 'mdi-checkbox-marked-circle' : 'mdi-checkbox-blank-circle-outline'
+                  }}</v-icon>
               </v-btn>
               <v-btn icon @click="editarCliente(cliente)">
                 <v-icon>mdi-pencil</v-icon>
               </v-btn>
               <v-btn icon @click="deleteCliente(cliente.id_cliente)">
                 <v-icon>mdi-delete</v-icon>
+              </v-btn>
+              <v-btn icon @click="goToCliente(cliente.id_cliente)">
+                <v-icon>mdi-eye</v-icon>
               </v-btn>
             </v-card-actions>
           </v-card>
@@ -101,17 +105,22 @@ export default {
   components: { Header, MapSelect, MapOneLocation },
   data() {
     return {
-      newCliente: { nombre: '', direccion: '', email: '', telefono: '', posicion: "0.0", longitud:"0.0", latitud:"0.0" },
-      clienteAEditar: { nombre: '', direccion: '', email: '', telefono: '', posicion: "0.0", longitud:"0.0", latitud:"0.0" },
+      newCliente: { nombre: '', direccion: '', email: '', telefono: '', posicion: "0.0", longitud: "0.0", latitud: "0.0" },
+      clienteAEditar: { nombre: '', direccion: '', email: '', telefono: '', posicion: "0.0", longitud: "0.0", latitud: "0.0" },
       clientes: [],
       loading: true,
       focusedClient: null,
       dialogEditar: false,
-      dialogCrear: false
+      dialogCrear: false,
+      currentLat: 0,
+      currentLng: 0,
+      currentAddress: '' // Aquí guardaremos la dirección
     };
   },
   mounted() {
     this.fetchClientes();
+    //this.promptLocation();
+
   },
   methods: {
     async fetchClientes() {
@@ -149,7 +158,7 @@ export default {
         console.error('Error al actualizar el cliente:', error);
       } finally {
         this.dialogEditar = false;
-        this.clienteAEditar = { nombre: '', direccion: '', email: '', telefono: '', posicion: "0.0", longitud:"0.0", latitud:"0.0" };
+        this.clienteAEditar = { nombre: '', direccion: '', email: '', telefono: '', posicion: "0.0", longitud: "0.0", latitud: "0.0" };
       }
     },
     async guardarCreacion() {
@@ -165,7 +174,7 @@ export default {
         console.error('Error al crear el cliente:', error);
       } finally {
         this.dialogCrear = false;
-        this.newCliente = { nombre: '', direccion: '', email: '', telefono: '', posicion: "0.0", longitud:"0.0", latitud:"0.0" };
+        this.newCliente = { nombre: '', direccion: '', email: '', telefono: '', posicion: "0.0", longitud: "0.0", latitud: "0.0" };
       }
     },
     async deleteCliente(id_cliente) {
@@ -187,20 +196,71 @@ export default {
     },
     irAAñadir() {
       this.dialogCrear = true;
+    },
+    goToCliente(id_cliente) {
+      this.$router.push(`/clientes/${id_cliente}`);
+    },
+    promptLocation() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            this.currentLat = position.coords.latitude;
+            this.currentLng = position.coords.longitude;
+            console.log("Latitud:", this.currentLat, "Longitud:", this.currentLng);
+            //sendLocationToBackend(latitude, longitude);
+          },
+          (error) => {
+            console.error("Error obteniendo la ubicación:", error);
+          }
+        );
+      } else {
+        console.error("La geolocalización no es soportada por este navegador.");
+      }
+    },
+    async fetchAddress() {
+      const token = 'pk.eyJ1IjoiYmNhaWNlcyIsImEiOiJjbTVrZzY3ZnExZnU2MmlvbXpnYzI1ZDJxIn0.9y-y5WtWqSL-0j7STmXyKA';
+      try {
+        // IMPORTANTE: Orden -> {LONGITUD},{LATITUD}
+        const response = await fetch(
+          `https://api.mapbox.com/geocoding/v5/mapbox.places/` +
+          `${this.currentLng},${this.currentLat}.json?access_token=${token}`
+        );
+        const data = await response.json();
+
+        // Verificamos si hay resultados
+        if (data.features && data.features.length > 0) {
+          // Toma la primera opción: data.features[0].place_name
+          this.currentAddress = data.features[0].place_name;
+        } else {
+          this.currentAddress = 'No se encontró una dirección para esas coordenadas';
+        }
+      } catch (error) {
+        console.error('Error al obtener la dirección:', error);
+        this.currentAddress = 'Ocurrió un error al obtener la dirección';
+      }
     }
   }
 };
 </script>
 
 <style scoped>
-.background {
-  padding: 20px;
+.container-title {
+  background-color: #282828;
+  margin-top: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
 }
 
 .lexend-deca-title {
-  font-family: 'Lexend Deca', sans-serif;
+  font-family: "Lexend Deca", sans-serif;
+  font-optical-sizing: auto;
+  color: var(--primary-a0);
+  font-weight: 700;
+  font-size: 4.25rem;
+  font-style: normal;
 }
-
 .boton-clientes {
   margin-bottom: 20px;
 }

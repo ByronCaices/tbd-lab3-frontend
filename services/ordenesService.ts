@@ -61,11 +61,22 @@ export const useOrdenService = () => {
         await $axiosService.delete(`/api/ordenes/delete-orden/${id}`);
     };
 
+    const getOrderHistory = async (): Promise<Orden[]> => {
+        try {
+            const { data } = await $axiosService.get<Orden[]>("/api/order-history/");
+            return data;
+        } catch (error) {
+            console.error(error);
+            throw error;
+        }
+    };
+
     return {
         createOrden,
         getOrdenById,
         getAllOrdenes,
         updateOrden,
-        deleteOrden
+        deleteOrden,
+        getOrderHistory
     };
 };
