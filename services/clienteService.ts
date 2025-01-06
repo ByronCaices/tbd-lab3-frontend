@@ -55,6 +55,7 @@ export const useClienteService = () => {
         return data;
     };
 
+
     /**
      * Elimina un cliente por su ID.
      * @param id - ID del cliente a eliminar.
@@ -81,7 +82,6 @@ export const useClienteService = () => {
         });
         return data;
     }; 
-        
 
     return {
         createCliente,
