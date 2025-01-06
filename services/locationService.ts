@@ -1,5 +1,6 @@
 import { useNuxtApp } from "#app";
 import type { Location } from "@/models/location";
+import type { Wirehouses } from "~/models/warehouses";
 
 export const useLocationService = () => {
 
@@ -10,9 +11,10 @@ export const useLocationService = () => {
         return data;
     };
 
-    const getLocationById = async (id: number): Promise<Location> => {
+    const getLocationById = async (id: number): Promise<Wirehouses> => {
         try {
-            const { data } = await $axiosService.get<Location>(`/api/locations/${id}`);
+            const { data } = await $axiosService.get<Wirehouses>(`/api/locations/${id}`);
+            console.log(data);
             return data;
         } catch (error) {
             console.error(error);

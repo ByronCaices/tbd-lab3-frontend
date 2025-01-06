@@ -86,16 +86,16 @@
                 color="var(--primary-a0)"
                 v-model="nuevaOrden.id_almacen"
                 :items="almacenes"
-                item-value="id_almacen"
-                item-title="nombre"
+                item-value="warehouseId"
+                item-title="warehouseName"
             >
               <template #item="{ item, props }">
                 <v-list-item v-bind="props">
-                  <v-list-item-title>{{ item.nombre }}</v-list-item-title>
+                  <v-list-item-title>{{ item.warehouseName }}</v-list-item-title>
                 </v-list-item>
               </template>
               <template #selection="{ item }">
-                {{ item ? item.nombre : 'Seleccionar almacén' }}
+                {{ item ? item.warehouseName : 'Seleccionar almacén' }}
               </template>
             </v-select>
 
@@ -137,7 +137,7 @@
 import Header from "@/components/Header.vue";
 import { useOrdenService } from "@/services/ordenesService";
 import { useClienteService } from "@/services/clienteService";
-import { useAlmacenService } from "@/services/almacenService";
+import { useLocationService } from "@/services/locationService";
 
 export default {
   components: {
@@ -159,19 +159,19 @@ export default {
         id_almacen: null,
         total: "",
       },
+      userId: null,
     };
   },
   async mounted() {
     try {
+      this.userId = parseInt(localStorage.getItem('id_usuario'), 10);
       const ordenService = useOrdenService();
       const clienteService = useClienteService();
-      const almacen = useAlmacenService();
+      const location = useLocationService();
       this.ordenes = await ordenService.getAllOrdenes();
       this.clientes = await clienteService.getAllClientes();
-      this.almacenes = await almacen.obtenerAlmacenes();
-      console.log(this.almacenes);
+      this.almacenes = (await location.getLocationById(this.userId)).warehouses;
       this.ordenes.sort((a, b) => a.id_orden - b.id_orden);
-      console.log(this.clientes);
     } catch (error) {
       console.error("Error al cargar las órdenes:", error);
     }
