@@ -63,21 +63,43 @@
           <v-form ref="formCrear">
             <v-text-field label="Fecha" color="var(--primary-a0)" v-model="nuevaOrden.fecha_orden" type="datetime-local"></v-text-field>
             <v-select
-              label="Cliente"
-              color="var(--primary-a0)"
-              v-model="nuevaOrden.id_cliente"
-              :items="clientes"
-              item-value="id_cliente"
+                label="Cliente"
+                color="var(--primary-a0)"
+                v-model="nuevaOrden.id_cliente"
+                :items="clientes"
+                item-value="id_cliente"
+                item-title="nombre"
             >
               <template #item="{ item, props }">
-                <v-list-item v-bind="props" :title="item.raw.nombre"></v-list-item>
+                <v-list-item v-bind="props">
+                  <v-list-item-title>{{ item.nombre }}</v-list-item-title>
+                </v-list-item>
               </template>
               <template #selection="{ item }">
-                {{ item.nombre }}
+                {{ item ? item.nombre : 'Seleccionar cliente' }}
               </template>
             </v-select>
+
+
+            <v-select
+                label="Almacén"
+                color="var(--primary-a0)"
+                v-model="nuevaOrden.id_almacen"
+                :items="almacenes"
+                item-value="id_almacen"
+                item-title="nombre"
+            >
+              <template #item="{ item, props }">
+                <v-list-item v-bind="props">
+                  <v-list-item-title>{{ item.nombre }}</v-list-item-title>
+                </v-list-item>
+              </template>
+              <template #selection="{ item }">
+                {{ item ? item.nombre : 'Seleccionar almacén' }}
+              </template>
+            </v-select>
+
             <v-select label="Estado" color="var(--primary-a0)" v-model="nuevaOrden.estado" :items="['Enviada', 'Pendiente', 'Pagada']"></v-select>
-            <v-text-field label="Total" color="var(--primary-a0)" v-model="nuevaOrden.total" type="number"></v-text-field>
           </v-form>
         </v-card-text>
         <v-card-actions>
@@ -115,6 +137,7 @@
 import Header from "@/components/Header.vue";
 import { useOrdenService } from "@/services/ordenesService";
 import { useClienteService } from "@/services/clienteService";
+import { useAlmacenService } from "@/services/almacenService";
 
 export default {
   components: {
@@ -124,6 +147,7 @@ export default {
     return {
       ordenes: [],
       clientes: [],
+      almacenes: [],
       dialogEditar: false,
       dialogCrear: false,
       ordenAEditar: null,
@@ -132,6 +156,7 @@ export default {
         fecha_orden: "",
         estado: "",
         id_cliente: null,
+        id_almacen: null,
         total: "",
       },
     };
@@ -140,8 +165,11 @@ export default {
     try {
       const ordenService = useOrdenService();
       const clienteService = useClienteService();
+      const almacen = useAlmacenService();
       this.ordenes = await ordenService.getAllOrdenes();
       this.clientes = await clienteService.getAllClientes();
+      this.almacenes = await almacen.obtenerAlmacenes();
+      console.log(this.almacenes);
       this.ordenes.sort((a, b) => a.id_orden - b.id_orden);
       console.log(this.clientes);
     } catch (error) {
@@ -199,12 +227,12 @@ export default {
       try {
         const ordenService = useOrdenService();
         
-        if (!this.nuevaOrden.fecha_orden || !this.nuevaOrden.id_cliente || !this.nuevaOrden.estado || !this.nuevaOrden.total) {
+        if (!this.nuevaOrden.fecha_orden || !this.nuevaOrden.id_cliente || !this.nuevaOrden.estado) {
           alert('Todos los campos son obligatorios');
           return;
         }
-        
-        this.nuevaOrden.total = parseFloat(this.nuevaOrden.total);
+
+        this.nuevaOrden.total = parseFloat(0);
         const nuevaOrden = await ordenService.createOrden(this.nuevaOrden);
         
         this.ordenes.push(nuevaOrden);

@@ -3,5 +3,6 @@ export interface Orden {
     fecha_orden: string;
     estado: string;
     id_cliente: number;
+    id_almacen: number;
     total: number;
 }

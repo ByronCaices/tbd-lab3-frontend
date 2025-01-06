@@ -5,11 +5,16 @@
   <div class="background">
     <h1 class="lexend-deca-title">ORDEN #{{ orden.id_orden }}</h1>
 
+    <!-- Botón para añadir un detalle -->
+    <v-btn class="my-3" variant="tonal" base-color="green" @click="abrirDialogoNuevoDetalle">
+      Añadir Detalle
+    </v-btn>
+
     <!-- Botón para añadir clientes -->
 
     <br>
 
-    <v-container v-if="orden && detallesOrden.length > 0">
+    <v-container v-if="orden">
       <v-row>
         <!-- Primera columna -->
         <v-col cols="3">
@@ -48,7 +53,7 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="(detalle, index) in detallesOrden" :key="index">
+                <tr v-if="detallesOrden.length > 0" v-for="(detalle, index) in detallesOrden" :key="index">
                   <td>{{ detalle.id_detalle }}</td>
                   <td>{{ detalle.cantidad }}</td>
                   <td>{{ detalle.precio_unitario }}</td>
@@ -61,13 +66,69 @@
                     </button>
                   </td>
                 </tr>
+                <tr v-else>
+                  <td colspan="7" class="empty-table-message">Sin detalles disponibles</td>
+                </tr>
               </tbody>
             </table>
           </div>
-          <h2 class="lexend-deca-title-t">Total: ${{ orden.total }}</h2>
+          <h2 class="lexend-deca-title-t">Total: ${{ detallesOrden.length > 0 ? orden.total : 0 }}</h2>
 
         </v-col>
       </v-row>
+
+      <!-- Diálogo para añadir nuevo detalle -->
+      <v-dialog v-model="dialogNuevoDetalle" max-width="500px">
+        <v-card variant="elevated" color="var(--surface-a40)">
+          <v-card-title>
+            <span class="headline">Añadir Detalle de Orden</span>
+          </v-card-title>
+          <v-card-text>
+            <v-form ref="formNuevoDetalle">
+              <!---
+              <v-select
+                  v-if="ordenesAlmacen.length > 0"
+                  label="Producto"
+                  :items="ordenesAlmacen"
+                  item-value="id_producto"
+                  item-text="nombre"
+                  v-model="nuevoDetalle.id_producto"
+                  color="var(--primary-a0)"
+                  required
+              ></v-select>
+              <p v-else>Cargando productos...</p> --->
+
+              <v-select
+                  label="Producto"
+                  color="var(--primary-a0)"
+                  v-model="nuevoDetalle.id_producto"
+                  :items="ordenesAlmacen"
+                  item-value="id_producto"
+                  item-title="nombre"
+              >
+                <template #item="{ item, props }">
+                  <v-list-item v-bind="props">
+                    <v-list-item-title>{{ item.nombre }}</v-list-item-title>
+                  </v-list-item>
+                </template>
+              </v-select>
+
+              <v-text-field
+                  label="Cantidad"
+                  type="number"
+                  v-model="nuevoDetalle.cantidad"
+                  color="var(--primary-a0)"
+                  required
+              ></v-text-field>
+            </v-form>
+          </v-card-text>
+          <v-card-actions>
+            <v-spacer></v-spacer>
+            <v-btn color="red darken-1" text @click="dialogNuevoDetalle = false">Cancelar</v-btn>
+            <v-btn color="green darken-1" text @click="agregarNuevoDetalle()">Guardar</v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
 
       <v-dialog v-model="dialogDevolver" max-width="500px">
         <v-card variant="elevated" color="var(--surface-a40)">
@@ -124,8 +185,8 @@
 </template>
 
 <script>
-import { useRouter } from "vue-router";
 import { useOrdenService } from "~/services/ordenesService";
+import { useAlmacenService } from "~/services/almacenService";
 import { useDetalleOrdenService } from "~/services/detalleOrdenService";
 import { useProductoService } from "~/services/productoService";
 import Header from "@/components/Header.vue"; // Ajusta la ruta según tu estructura de archivos
@@ -149,6 +210,7 @@ export default {
         fecha_orden: "",
         estado: "",
         id_cliente: null,
+        id_almacen: null,
         total: null,
       },
       productos: [],
@@ -180,6 +242,14 @@ export default {
       id_usuario: null,
       dialogDevolver: false,
       dialogEditar: false,
+      ordenesAlmacen: [],
+      dialogNuevoDetalle: false,
+      nuevoDetalle: {
+        id_producto: null,
+        cantidad: null,
+        id_orden: null,
+        precio_unitario: null,
+      },
     };
   },
   computed: {
@@ -204,7 +274,9 @@ export default {
       const id = this.$route.params.ID_ORDEN;
       try {
         const ordenService = useOrdenService();
+        const almacenService = useAlmacenService();
         this.orden = await ordenService.getOrdenById(id);
+        this.ordenesAlmacen = await almacenService.productosAlmacen(this.orden.id_almacen);
         this.loading = false;
       } catch (error) {
         console.error("Error al cargar la orden:", error);
@@ -224,6 +296,7 @@ export default {
         try {
           const productoService = useProductoService();
           const producto = await productoService.getProductoById(detalle.id_producto);
+
           this.productos.push(producto);
           //console.log("Productos:", this.productos);
           // agrega a cada detalle el nombre del producto
@@ -311,6 +384,43 @@ export default {
         this.fetchDetallesOrden();
       } catch (error) {
         console.error("Error al actualizar el detalle de la orden:", error);
+      }
+    },
+    abrirDialogoNuevoDetalle() {
+      this.dialogNuevoDetalle = true;
+      this.nuevoDetalle.id_orden = this.orden.id_orden;
+      this.nuevoDetalle.cantidad = null;
+      this.nuevoDetalle.id_producto = null;
+    },
+    async agregarNuevoDetalle() {
+      try {
+        console.log(this.nuevoDetalle);
+        const productoSeleccionado = this.ordenesAlmacen.find(
+            (p) => p.id_producto === this.nuevoDetalle.id_producto
+        );
+        if (!productoSeleccionado) {
+          console.error("Producto no válido");
+          return;
+        }
+
+        if (productoSeleccionado.stock <= 0) {
+          console.error("No hay stock disponible para este producto");
+          return;
+        }
+
+        this.nuevoDetalle.precio_unitario = productoSeleccionado.precio;
+
+        const detalleOrdenService = useDetalleOrdenService();
+        await detalleOrdenService.createDetalleOrden(this.nuevoDetalle);
+
+        // Actualiza el total de la orden
+        this.orden.total += this.nuevoDetalle.cantidad * this.nuevoDetalle.precio_unitario;
+        await useOrdenService().updateOrden(this.orden);
+
+        this.dialogNuevoDetalle = false;
+        this.fetchDetallesOrden();
+      } catch (error) {
+        console.error("Error al añadir el nuevo detalle:", error);
       }
     },
   },
