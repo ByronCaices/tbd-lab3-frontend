@@ -1,6 +1,7 @@
 import { useNuxtApp } from "#app";
 import type { Almacen } from "@/models/almacen";
 import type { Orden } from "@/models/orden";
+import type { Producto } from "@/models/producto";
 
 
 export const useAlmacenService = () => {
@@ -10,6 +11,11 @@ export const useAlmacenService = () => {
         const { data } = await $axiosService.get<Almacen[]>("/api/almacen/");
         return data;
     };
+
+    const productosAlmacen = async (id: number): Promise<Producto[]> => {
+        const { data } = await $axiosService.get<Producto[]>(`/api/almacen/productos-almacen/${id}`);
+        return data;
+    }
 
     const obtenerAlmacen = async (id: number, token: string): Promise<Almacen> => {
         const { data } = await $axiosService.get<Almacen>(`/api/almacen/id-almacen/${id}`);
@@ -43,6 +49,7 @@ export const useAlmacenService = () => {
         crearAlmacen,
         actualizarAlmacen,
         eliminarAlmacen,
-        obtenerOrdenesCercanas
+        obtenerOrdenesCercanas,
+        productosAlmacen
     };
 }
